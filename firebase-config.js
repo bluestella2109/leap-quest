@@ -1,9 +1,10 @@
+// Firebase configuration for LEAP QUEST
 export const firebaseConfig = {
-  "apiKey": "AIzaSyD_6Y9LM-Kd751_rE9IOGZNPyLi3TdIE8",
-  "authDomain": "leap-quest-94f96.firebaseapp.com",
-  "projectId": "leap-quest-94f96",
-  "storageBucket": "leap-quest-94f96.firebasestorage.app",
-  "messagingSenderId": "62348495128",
-  "appId": "1:62348495128:web:940322fe56d621fbb6766d",
-  "measurementId": "G-BXEH2FF9NV"
+  apiKey: "AIzaSyBC1lFDVzertchQzGlgd6PrTNSRZOaWwS0",
+  authDomain: "leap-quest-fd5cb.firebaseapp.com",
+  projectId: "leap-quest-fd5cb",
+  storageBucket: "leap-quest-fd5cb.firebasestorage.app",
+  messagingSenderId: "395972334463",
+  appId: "1:395972334463:web:04446d36a8068cba96004a",
+  measurementId: "G-VX2XNP1DZX"
 };
