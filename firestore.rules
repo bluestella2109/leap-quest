@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isSelf(uid) { return signedIn() && request.auth.uid == uid; }
+
+    match /userIds/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && !exists(/databases/$(database)/documents/userIds/$(id))
+        && request.resource.data.uid == request.auth.uid
+        && id.matches('^[0-9]{6}$');
+      allow update, delete: if false;
+    }
+
+    match /profiles/{uid} {
+      allow read: if signedIn();
+      allow create: if isSelf(uid)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.userId is string
+        && getAfter(/databases/$(database)/documents/userIds/$(request.resource.data.userId)).data.uid == request.auth.uid;
+      allow update: if isSelf(uid)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName','photoURL','exp','level','masteredCount','answered','correct','accuracy','online','updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    match /friendRequests/{requestId} {
+      allow read: if signedIn()
+        && (resource.data.fromUid == request.auth.uid || resource.data.toUid == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.fromUid == request.auth.uid
+        && request.resource.data.toUid is string
+        && request.resource.data.toUid != request.auth.uid
+        && requestId == request.auth.uid + '_' + request.resource.data.toUid
+        && request.resource.data.status == 'pending'
+        && exists(/databases/$(database)/documents/profiles/$(request.resource.data.toUid));
+      allow update: if signedIn()
+        && resource.data.toUid == request.auth.uid
+        && resource.data.status == 'pending'
+        && request.resource.data.fromUid == resource.data.fromUid
+        && request.resource.data.toUid == resource.data.toUid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','acceptedAt'])
+        && request.resource.data.status in ['accepted','declined'];
+      allow delete: if false;
+    }
+
+    match /friendships/{friendshipId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.members;
+      allow create: if signedIn()
+        && request.resource.data.members is list
+        && request.resource.data.members.size() == 2
+        && request.auth.uid in request.resource.data.members
+        && request.resource.data.members[0] < request.resource.data.members[1]
+        && friendshipId == request.resource.data.members[0] + '_' + request.resource.data.members[1]
+        && exists(/databases/$(database)/documents/friendRequests/$(request.resource.data.members[0] == request.auth.uid
+          ? request.resource.data.members[1] + '_' + request.auth.uid
+          : request.resource.data.members[0] + '_' + request.auth.uid))
+        && get(/databases/$(database)/documents/friendRequests/$(request.resource.data.members[0] == request.auth.uid
+          ? request.resource.data.members[1] + '_' + request.auth.uid
+          : request.resource.data.members[0] + '_' + request.auth.uid)).data.toUid == request.auth.uid
+        && get(/databases/$(database)/documents/friendRequests/$(request.resource.data.members[0] == request.auth.uid
+          ? request.resource.data.members[1] + '_' + request.auth.uid
+          : request.resource.data.members[0] + '_' + request.auth.uid)).data.status == 'pending';
+      allow delete: if signedIn() && request.auth.uid in resource.data.members;
+      allow update: if false;
+    }
+  }
+}
