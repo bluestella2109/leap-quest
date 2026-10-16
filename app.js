@@ -406,7 +406,43 @@ $('timerStopBtn').onclick=()=>stopFocus(true);$('focusSpeak').onclick=()=>{const
 // --- 記憶の書 & 単語一覧・ランキング ---
 function startStudy(){let list=clampRange('studyStart','studyEnd');study={list:shuffle(list).slice(0,Number($('studyCount').value)||20),index:0,flipped:false};if(!study.list.length){toast('この範囲に単語がありません');return}renderStudy()}
 function renderStudy(){let w=study.list[study.index];if(!w)return;$('studyNo').textContent=w.id;$('studyWord').textContent=w.word;$('studyMeaning').textContent=w.meaning;$('studyMeaning').classList.toggle('hidden',!study.flipped);$('flipStudy').textContent=study.flipped?'意味を隠す':'意味を表示';$('studyStatus').textContent=`${study.index+1} / ${study.list.length} 枚`}
-$('startStudy').onclick=startStudy;$('flipStudy').onclick=()=>{study.flipped=!study.flipped;renderStudy()};$('studyPrev').onclick=()=>{if(study.list.length){study.index=(study.index-1+study.list.length)\%study.list.length;study.flipped=false;renderStudy()}};$('studyNext').onclick=()=>{if(study.list.length){study.index=(study.index+1)%study.list.length;study.flipped=false;renderStudy()}};$('studyKnown').onclick=()=>{let w=study.list[study.index];if(!w)return;local.mastered=[...new Set([...local.mastered,w.id])];local.exp+=3;saveLocal();toast('習得済みに登録 +3 EXP');study.index=(study.index+1)\%study.list.length;study.flipped=false;renderStudy()};$('studyMiss').onclick=()=>{let w=study.list[study.index];if(!w)return;local.review=[...new Set([...local.review,w.id])];saveLocal();toast('復習リストに登録');study.index=(study.index+1)%study.list.length;study.flipped=false;renderStudy()};
+$('startStudy').onclick = startStudy;
+$('flipStudy').onclick = () => { study.flipped = !study.flipped; renderStudy(); };
+$('studyPrev').onclick = () => {
+  if (study.list.length) {
+    study.index = (study.index - 1 + study.list.length) % study.list.length;
+    study.flipped = false;
+    renderStudy();
+  }
+};
+$('studyNext').onclick = () => {
+  if (study.list.length) {
+    study.index = (study.index + 1) % study.list.length;
+    study.flipped = false;
+    renderStudy();
+  }
+};
+$('studyKnown').onclick = () => {
+  let w = study.list[study.index];
+  if (!w) return;
+  local.mastered = [...new Set([...local.mastered, w.id])];
+  local.exp += 3;
+  saveLocal();
+  toast('習得済みに登録 +3 EXP');
+  study.index = (study.index + 1) % study.list.length;
+  study.flipped = false;
+  renderStudy();
+};
+$('studyMiss').onclick = () => {
+  let w = study.list[study.index];
+  if (!w) return;
+  local.review = [...new Set([...local.review, w.id])];
+  saveLocal();
+  toast('復習リストに登録');
+  study.index = (study.index + 1) % study.list.length;
+  study.flipped = false;
+  renderStudy();
+};
 
 function speakWord(word){if(!('speechSynthesis'in window)){toast('このブラウザは読み上げに対応していません');return}speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(word);u.lang='en-US';u.rate=.85;speechSynthesis.speak(u)}
 
