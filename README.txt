@@ -1,54 +1,49 @@
-LEAP QUEST — Googleスプレッドシート管理版
-========================================
+LEAP QUEST ONLINE — LEAP単語RPG
+================================
 
-この版はFirebase Authenticationを使いません。アカウントは「6桁ユーザーID＋4桁PIN」で作成・ログインし、アカウント情報と学習進捗の集計をGoogleスプレッドシートに保存します。
+このフォルダはFirebase連携版です。提供されたCSVからLEAP単語2,300語を収録しています。
 
-同梱ファイル
-- index.html : 画面
-- style.css : レトロRPGデザイン
-- app.js : 学習ゲーム、PINログイン、シートAPI通信
-- words.js : LEAP単語データ
-- sheet-config.js : Google Apps ScriptのURLを設定するファイル
-- Code.gs : Google Apps Scriptサーバーコード
+含まれるファイル
+- index.html : 画面構成
+- style.css : レトロRPGデザイン、画面遷移・バトル演出
+- app.js : クイズ、学習記録、Firebase認証、プロフィール、フレンド、オンライン状態
+- words.js : CSVから取り込んだ2,300語
+- firebase-config.js : 共有いただいたFirebaseウェブアプリ設定
+- firestore.rules : Firestoreセキュリティルール
+- database.rules.json : Realtime Databaseセキュリティルール
+- storage.rules : プロフィール画像用Storageルール
 
-セットアップ
-1. Googleドライブで新しいGoogleスプレッドシートを作成します。
-2. スプレッドシートを開き、[拡張機能] → [Apps Script] を選びます。
-3. エディタのコードをCode.gsの内容に置き換え、保存します。
-4. Apps Scriptの「デプロイ」→「新しいデプロイ」を選びます。
-5. 種類を「ウェブアプリ」にして、次のように設定します。
-   - 次のユーザーとして実行：自分
-   - アクセスできるユーザー：全員
-6. デプロイし、表示されたウェブアプリURL（末尾が /exec）をコピーします。
-7. このプロジェクトのsheet-config.jsを開き、空欄にURLを設定します。
-   window.LEAP_SHEET_API_URL = 'https://script.google.com/macros/s/ここにデプロイID/exec';
-8. index.html、style.css、app.js、words.js、sheet-config.jsをGitHub Pagesの同じフォルダに配置します。
-9. 初回アクセス時に、Apps ScriptがUsers / FriendRequests / Friendships / Sessions / ReservedIdsの各シートを自動作成します。
-10. 初回APIアクセス時、Googleアカウントで権限承認を求められた場合は、スプレッドシート所有者が承認してください。
+起動方法（Firebase設定が必要）
+1. Firebase Consoleで Authentication > Sign-in method > Email/Password を有効化。
+2. Firestore Databaseを作成。
+3. Realtime Databaseを作成し、database.rules.json のルールを公開。
+4. Storageを有効化し、storage.rules のルールを公開。
+5. Firestore > Rules に firestore.rules の内容を貼り付けて公開。
+6. index.html、style.css、app.js、words.js、firebase-config.jsを同じフォルダ構造でWebホスティングに配置。
+7. ローカルで試す場合は、ファイルを直接開くのではなくローカルHTTPサーバーを使用。ES modulesは file:// では動かない場合があります。
+8. Firebase Authenticationで登録・ログインして使用。
 
-アカウントの使い方
-- 新規作成：冒険者名＋数字4桁PIN（確認用を含む）
-- 作成後に6桁ユーザーIDが表示されます。IDとPINを必ず控えてください。
-- ログイン：6桁ユーザーID＋4桁PIN
-- PINを忘れると、この試作版にはPIN再設定機能がありません。大切に保管してください。
-- セッションは最長72時間で期限切れになります。
-- 連続してPINを5回間違えると、そのIDへのログイン試行は約15分間制限されます。
+GitHub Pagesへの配置
+- このフォルダの中身をリポジトリのルートに配置して公開します。
+- Firebase Console > Authentication > Settings > Authorized domains に、GitHub Pagesのホスト名（例: yourname.github.io）を追加してください。
+- Firebaseの各サービスで、無料枠・地域・利用規約などを確認してください。
 
-データ保存の範囲
-- スプレッドシート：ユーザーID、表示名、PIN検証用ハッシュ、経験値、レベル、習得語数、正答数・正答率、フレンド申請／関係、ログインセッション
-- ブラウザ：単語ごとの習得・復習リストなどの詳細学習履歴
-- この版ではプロフィール画像のシート同期は無効にしています。画像をURL経由で送るとApps ScriptのURL長制限を超えるためです。
-- オンライン表示は簡易表示で、リアルタイム同期ではありません。
+機能
+- 画面ごとの切り替えアニメーション
+- 任意の単語番号範囲を指定したバトル／カード学習
+- 4択バトル、コンボ、正解時のフラッシュ・ダメージ数字・敵のノックバック
+- EXP、レベル、習得済み、復習リスト
+- 6桁ユーザーIDの自動割り当て（FirestoreトランザクションでIDコードを確保）
+- メール・パスワード登録、ログイン、パスワード再設定
+- プロフィール名・プロフィール画像
+- IDによるフレンド申請／承認／拒否／解除
+- Realtime Databaseによるオンライン／オフライン状態
+- フレンドのレベル、習得語数、正答率の表示
 
-重要なセキュリティ上の注意
-- 4桁PINは強固な認証方法ではありません。これは学習用の試作です。個人情報や重要なデータには使用しないでください。
-- GitHub PagesとApps ScriptのJSONP連携のため、APIリクエストはGETで送信されます。PINそのものではなく、IDとPINから作ったSHA-256ハッシュを送りますが、ハッシュやセッショントークンがURLに含まれるため、本番用途には推奨できません。
-- 本格運用する場合は、Cloud Run / Cloud Functions等のサーバー側API、適切な認証、HTTPS POST、レート制限、セッション保護を導入してください。
-- Apps Scriptを「全員」に公開するため、コードを変更する場合は必ず入力検証を維持してください。
-- スプレッドシートを共有する相手には、ユーザーのPINハッシュ等の列が見える可能性があります。シート自体の共有設定を厳格に管理してください。
-
-トラブルシューティング
-- 「Google Apps ScriptのURLが未設定」：sheet-config.jsを確認。
-- 接続エラー：デプロイURLが /exec で終わること、アクセス権が「全員」であることを確認。コードを更新した場合はデプロイを管理し、新しいバージョンを公開してください。
-- シートが作られない：Apps Scriptが対象スプレッドシートに紐づいているか確認。
-- 単語の詳細な学習履歴は端末ごとに保存されます。アカウント共通での単語履歴同期は未対応です。
+注意事項
+- Firebaseの設定情報はクライアント用のもので、秘密鍵ではありません。ただしFirestore/Storage/Realtime Databaseのセキュリティルールは必ず設定してください。
+- この試作版では学習履歴の詳細（単語ごとの正答履歴）はブラウザのlocalStorageに保存され、プロフィールには経験値・レベル・習得語数・正答率を同期します。端末をまたいで完全同期したい場合は、学習記録の保存方式を次の段階で拡張します。
+- アカウント作成時にFirestore書き込みがルールに拒否された場合、Authenticationにユーザーだけが作られる可能性があります。開発中にルールを変更したら、再度登録するかFirestoreのプロフィール／ID文書を管理画面から確認してください。
+- 6桁IDはランダムなコードをトランザクションで予約します。IDを大量取得させないため、公開前にはApp Checkやレート制限、Cloud Functionsでの発行処理を追加することを推奨します。
+- オンライン表示は接続切断を検知して更新します。ブラウザを強制終了した場合など、反映に短い遅延が生じることがあります。
+- このアプリは単語学習用です。LEAPは出版社等の商標・著作物である可能性があります。単語リストの公開・再配布は権利条件を確認してください。
