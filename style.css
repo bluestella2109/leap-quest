@@ -28,3 +28,22 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;back
 .game-keyboard{display:grid;gap:7px;max-width:720px;margin:16px auto;padding:12px;border:1px solid rgba(119,209,255,.22);border-radius:18px;background:rgba(5,13,30,.7);box-shadow:inset 0 0 28px rgba(42,124,195,.1)}.keyboard-row{display:flex;justify-content:center;gap:5px}.key{min-width:0;flex:1;max-width:54px;min-height:43px;border:1px solid #395b7a;border-radius:9px;color:#e9f7ff;background:linear-gradient(#284665,#13263f);font:800 16px ui-monospace,monospace;box-shadow:0 4px 0 #081525;cursor:pointer;touch-action:manipulation}.key:active,.key.pressed{transform:translateY(3px);box-shadow:0 1px 0 #081525;background:#2d7eaa}.key.utility{max-width:82px;font-size:11px;letter-spacing:.05em}.key.space{max-width:280px;flex:3}.key.clear{flex:1}.typing-form input{caret-color:transparent;cursor:default;user-select:none}
 .battle-arena,.typing-arena,.settings-card,.focus-card{animation:softGlow 8s ease-in-out infinite alternate}@keyframes softGlow{to{box-shadow:0 0 35px rgba(67,176,255,.12)}}
 @media(max-width:760px){.app.sidebar-collapsed{grid-template-columns:56px minmax(0,1fr)}.sidebar-toggle{padding:8px 3px}.sidebar-collapsed .sidebar{padding-left:5px;padding-right:5px}.key{min-height:39px;font-size:14px}.answer-overlay-card{padding:24px 18px}}
+
+/* LEAP QUEST: メイン画面の表示を強制的に復旧 */
+.main {
+  display: block !important;
+  min-width: 0;
+  min-height: 60vh;
+}
+
+.page.active {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  transform: none !important;
+  animation: none !important;
+}
+
+.page:not(.active) {
+  display: none !important;
+}
