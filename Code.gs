@@ -1,6 +1,6 @@
 /** LEAP QUEST spreadsheet backend. Deploy as a Web App, execute as you, access: Anyone. */
 const APP_TITLE = 'LEAP QUEST';
-const TAB_USERS = 'Users', TAB_SESSIONS = 'Sessions', TAB_RESERVED = 'ReservedIds';
+const TAB_USERS = 'Users', TAB_SESSIONS = 'Sessions', TAB_RESERVED = 'ReservedIds', TAB_RANKING = 'ランキング';
 const SESSION_HOURS = 72;
 function doGet(e) {
   const p = e && e.parameter || {}, callback = String(p.callback || '');
@@ -28,7 +28,7 @@ function handle_(action, d) {
       const us=sheet_(ss,TAB_USERS); if (findRow_(us,1,id)) throw new Error('このIDは使用済みです。もう一度登録してください。');
       if (!findRow_(sheet_(ss,TAB_RESERVED),1,id)) throw new Error('登録セッションが無効です。もう一度登録してください。');
       const now=new Date(); const row=[id,name,hash,'',0,1,'[]','[]',0,0,0,0,'',now,now]; us.appendRow(row);
-      deleteByValue_(sheet_(ss,TAB_RESERVED),1,id); const user={userId:id,displayName:name,pinHash:hash,photoURL:'',exp:0,level:1,mastered:[],review:[],masteredCount:0,answered:0,correct:0,accuracy:0,lastLog:'',online:true};
+      deleteByValue_(sheet_(ss,TAB_RESERVED),1,id); rebuildRanking_(ss); const user={userId:id,displayName:name,pinHash:hash,photoURL:'',exp:0,level:1,mastered:[],review:[],masteredCount:0,answered:0,correct:0,accuracy:0,lastLog:'',online:true};
       return createSession_(ss,user);
     } finally { lock.releaseLock(); }
   }
@@ -41,6 +41,7 @@ function handle_(action, d) {
   if (action === 'me') { const u=auth_(ss,d.token); return {ok:true,userId:u.userId,token:d.token,profile:publicUser_(u)}; }
   if (action === 'logout') { deleteByValue_(sheet_(ss,TAB_SESSIONS),2,String(d.token||'')); return {ok:true}; }
   if (action === 'leaderboard') return leaderboard_(ss, d.limit);
+  if (action === 'refreshRanking') { rebuildRanking_(ss); return leaderboard_(ss, d.limit); }
   const u=auth_(ss,d.token);
   if (action === 'updateProfile') {
     const us=sheet_(ss,TAB_USERS),r=findRow_(us,1,u.userId), row=us.getRange(r,1,1,15).getValues()[0];
@@ -50,11 +51,11 @@ function handle_(action, d) {
   }
   if (action === 'saveProgress') {
     const us=sheet_(ss,TAB_USERS),r=findRow_(us,1,u.userId),row=us.getRange(r,1,1,15).getValues()[0];
-    row[4]=num_(d.exp,0,100000000); row[5]=Math.max(1,num_(d.level,1,1000000)); row[8]=num_(d.masteredCount,0,2300); row[9]=num_(d.answered,0,100000000); row[10]=num_(d.correct,0,row[9]); row[11]=row[9]?Math.round(row[10]/row[9]*100):0; row[12]=text_(d.lastLog,300); row[14]=new Date(); us.getRange(r,1,1,15).setValues([row]); return {ok:true,profile:publicUser_(rowToUser_(row))};
+    row[4]=num_(d.exp,0,100000000); row[5]=Math.max(1,num_(d.level,1,1000000)); row[8]=num_(d.masteredCount,0,2300); row[9]=num_(d.answered,0,100000000); row[10]=num_(d.correct,0,row[9]); row[11]=row[9]?Math.round(row[10]/row[9]*100):0; row[12]=text_(d.lastLog,300); row[14]=new Date(); us.getRange(r,1,1,15).setValues([row]); rebuildRanking_(ss); return {ok:true,profile:publicUser_(rowToUser_(row))};
   }
   throw new Error('未対応の操作です。');
 }
-function ensureSheets_(ss){const specs=[[TAB_USERS,['userId','displayName','pinHash','photoURL','exp','level','masteredJSON','reviewJSON','masteredCount','answered','correct','accuracy','lastLog','createdAt','updatedAt']],[TAB_SESSIONS,['userId','token','expiresAt']],[TAB_RESERVED,['userId','createdAt']]];specs.forEach(([name,headers])=>{let s=ss.getSheetByName(name);if(!s)s=ss.insertSheet(name);if(s.getLastRow()===0)s.appendRow(headers);s.setFrozenRows(1)});}
+function ensureSheets_(ss){const specs=[[TAB_RANKING,['rank','userId','displayName','level','exp','masteredCount','accuracy','updatedAt']],[TAB_USERS,['userId','displayName','pinHash','photoURL','exp','level','masteredJSON','reviewJSON','masteredCount','answered','correct','accuracy','lastLog','createdAt','updatedAt']],[TAB_SESSIONS,['userId','token','expiresAt']],[TAB_RESERVED,['userId','createdAt']]];specs.forEach(([name,headers])=>{let s=ss.getSheetByName(name);if(!s)s=ss.insertSheet(name);if(s.getLastRow()===0)s.appendRow(headers);s.setFrozenRows(1)});}
 function sheet_(ss,n){return ss.getSheetByName(n)}
 function findRow_(s,col,val){if(s.getLastRow()<2)return 0;const f=s.getRange(2,col,s.getLastRow()-1,1).createTextFinder(String(val)).matchEntireCell(true).findNext();return f?f.getRow():0}
 function deleteByValue_(s,col,val){const r=findRow_(s,col,val);if(r)s.deleteRow(r)}
@@ -68,10 +69,21 @@ function parseJSON_(v){try{return JSON.parse(v||'[]')}catch(_){return []}}
 function publicUser_(u){return {userId:u.userId,displayName:u.displayName,photoURL:u.photoURL,exp:u.exp,level:u.level,mastered:u.mastered,review:u.review,masteredCount:u.masteredCount,answered:u.answered,correct:u.correct,accuracy:u.accuracy,lastLog:u.lastLog,online:false}}
 function createSession_(ss,u){const token=Utilities.getUuid().replace(/-/g,'')+Utilities.getUuid().replace(/-/g,'');const s=sheet_(ss,TAB_SESSIONS);s.appendRow([u.userId,token,new Date(Date.now()+SESSION_HOURS*3600000)]);return {ok:true,userId:u.userId,token,profile:publicUser_(u)}}
 function auth_(ss,token){if(!token)throw new Error('ログインしてください。');const s=sheet_(ss,TAB_SESSIONS);if(s.getLastRow()<2)throw new Error('セッションが無効です。ログインし直してください。');const rows=s.getRange(2,1,s.getLastRow()-1,3).getValues();for(let i=rows.length-1;i>=0;i--){if(String(rows[i][1])===String(token)){if(new Date(rows[i][2]).getTime()<Date.now()){s.deleteRow(i+2);throw new Error('ログイン期限が切れました。ログインし直してください。')}const r=findRow_(sheet_(ss,TAB_USERS),1,String(rows[i][0]));if(!r)break;return rowToUser_(sheet_(ss,TAB_USERS).getRange(r,1,1,15).getValues()[0]);}}throw new Error('セッションが無効です。ログインし直してください。')}
+function rebuildRanking_(ss) {
+  const users=sheet_(ss,TAB_USERS), rank=sheet_(ss,TAB_RANKING);
+  const headers=['rank','userId','displayName','level','exp','masteredCount','accuracy','updatedAt'];
+  if(rank.getLastRow()===0)rank.appendRow(headers); else rank.getRange(1,1,1,headers.length).setValues([headers]);
+  const rows=users.getLastRow()<2?[]:users.getRange(2,1,users.getLastRow()-1,15).getValues();
+  const data=rows.filter(r=>/^\d{6}$/.test(String(r[0]||''))).map(r=>[String(r[0]),String(r[1]||'冒険者'),Number(r[5])||1,Number(r[4])||0,Number(r[8])||0,Number(r[11])||0,r[14]||new Date()]);
+  data.sort((a,b)=>b[3]-a[3]||b[4]-a[4]||b[5]-a[5]);
+  if(rank.getLastRow()>1)rank.getRange(2,1,rank.getLastRow()-1,headers.length).clearContent();
+  if(data.length)rank.getRange(2,1,data.length,headers.length).setValues(data.map((r,i)=>[i+1,...r]));
+  rank.setFrozenRows(1); rank.getRange(1,1,1,headers.length).setFontWeight('bold');
+}
 function leaderboard_(ss, limit) {
-  const s=sheet_(ss,TAB_USERS);
-  if(s.getLastRow()<2) return {ok:true,ranking:[]};
-  const rows=s.getRange(2,1,s.getLastRow()-1,15).getValues();
-  const ranking=rows.filter(r=>String(r[0]||'').match(/^\d{6}$/)).map(r=>({userId:String(r[0]),displayName:String(r[1]||'冒険者'),exp:Number(r[4])||0,level:Number(r[5])||1,masteredCount:Number(r[8])||0,accuracy:Number(r[11])||0})).sort((a,b)=>b.exp-a.exp||b.masteredCount-a.masteredCount||b.accuracy-a.accuracy).slice(0,Math.max(1,Math.min(100,num_(limit,1,100))));
+  const s=sheet_(ss,TAB_RANKING);
+  if(s.getLastRow()<2)return {ok:true,ranking:[]};
+  const rows=s.getRange(2,1,s.getLastRow()-1,8).getValues();
+  const ranking=rows.filter(r=>/^\d{6}$/.test(String(r[1]||''))).map(r=>({rank:Number(r[0])||0,userId:String(r[1]),displayName:String(r[2]||'冒険者'),level:Number(r[3])||1,exp:Number(r[4])||0,masteredCount:Number(r[5])||0,accuracy:Number(r[6])||0})).slice(0,Math.max(1,Math.min(100,num_(limit,1,100))));
   return {ok:true,ranking};
 }
